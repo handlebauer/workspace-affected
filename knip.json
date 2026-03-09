@@ -1,0 +1,6 @@
+{
+	"$schema": "https://unpkg.com/knip@latest/schema.json",
+	"entry": ["src/**/*.test.ts", "scripts/**/index.ts", "publish.ts"],
+	"project": ["src/**/*.ts", "scripts/**/*.ts", "publish.ts", "tsdown.config.ts"],
+	"ignoreDependencies": ["@stylistic/eslint-plugin", "eslint-plugin-jsdoc", "lint-staged"]
+}
