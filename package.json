@@ -36,6 +36,7 @@
 	"scripts": {
 		"prepare": "husky",
 		"build": "tsdown",
+		"test": "bun test src/",
 		"check": "bun scripts/workspace/check",
 		"release": "bun run publish.ts",
 		"bump": "bunx bumpp"

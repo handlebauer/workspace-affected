@@ -6,7 +6,7 @@ Commit all staged/unstaged changes, bump the version, and push.
 
 1. Review changes with `git status` and `git diff`
 2. Commit using `.cursor/commands/git/commit.md` if necessary
-2. Bump the version:
+3. Bump the version:
 
 ```bash
 bun bump --release patch --yes
