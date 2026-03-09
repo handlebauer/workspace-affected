@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { resolve } from 'node:path'
 import { parseArgs as parseNodeArgs } from 'node:util'
