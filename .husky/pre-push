@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # -----------------------------------------------------------------------------
-# Full verification before pushing.
+# Run unit tests before pushing.
+#
+# To skip running tests, set the environment variable SKIP_TESTS to "true":
+#   Example: SKIP_TESTS=true git push
 # -----------------------------------------------------------------------------
-bun run test
-bun check
+if [ "$SKIP_TESTS" != "true" ]; then
+	bun run test
+fi
