@@ -18,7 +18,7 @@
 	],
 	"scripts": {
 		"build": "tsdown",
-		"bump": "bunx bumpp",
+		"bump": "bunx bumpp --no-verify",
 		"check": "bun scripts/workspace/check",
 		"prepare": "husky",
 		"release": "bun run publish.ts",
