@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
-import { assertCommitExists, getChangedFilesSince } from './git'
 import { commitAll, createTempRepo, gitHead, removeTempRepo, writeRepoFile } from '../tests'
+import { assertCommitExists, getChangedFilesSince } from './git'
 
 describe('assertCommitExists', () => {
 	test('rejects blank commit values', async () => {
-		await expect(assertCommitExists(process.cwd(), '   ')).rejects.toThrow('Missing --since value.')
+		await expect(assertCommitExists(process.cwd(), '   ')).rejects.toThrow(
+			'Missing --since value.',
+		)
 	})
 })
 

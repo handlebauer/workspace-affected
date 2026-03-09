@@ -126,7 +126,7 @@ describe('workspace-affected CLI', () => {
 			await commitAll(root, 'change a')
 
 			const result = await runCli(root, ['--since', before, '--output', 'json'])
-			const parsed = JSON.parse(result.stdout) as Array<Record<string, unknown>>
+			const parsed = JSON.parse(result.stdout) as Record<string, unknown>[]
 
 			expect(result.exitCode).toBe(0)
 			expect(parsed).toEqual([

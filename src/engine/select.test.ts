@@ -1,13 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
+import { commitAll, createTempRepo, gitHead, removeTempRepo, writeRepoFile } from '../tests'
 import { discoverAffectedPackages } from './select'
-import {
-	commitAll,
-	createTempRepo,
-	gitHead,
-	removeTempRepo,
-	writeRepoFile,
-} from '../tests'
 
 /**
  * Creates a temporary git repo with a simple two-package dependency chain.
@@ -234,7 +228,11 @@ describe('discoverAffectedPackages integration', () => {
 		try {
 			const before = await gitHead(root)
 
-			await writeRepoFile(root, 'packages/internal/secret/src.ts', 'export const value = 2;\n')
+			await writeRepoFile(
+				root,
+				'packages/internal/secret/src.ts',
+				'export const value = 2;\n',
+			)
 			await commitAll(root, 'change secret')
 
 			const affected = await discoverAffectedPackages({
