@@ -1,21 +1,29 @@
 {
 	"name": "workspace-affected",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
-	"module": "dist/index.mjs",
-	"types": "dist/index.d.mts",
-	"bin": {
-		"workspace-affected": "dist/cli.mjs"
-	},
 	"exports": {
 		".": {
 			"import": "./dist/index.mjs",
 			"types": "./dist/index.d.mts"
 		}
 	},
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.mts",
+	"bin": {
+		"workspace-affected": "dist/cli.mjs"
+	},
 	"files": [
 		"dist"
 	],
+	"scripts": {
+		"build": "tsdown",
+		"bump": "bunx bumpp",
+		"check": "bun scripts/workspace/check",
+		"prepare": "husky",
+		"release": "bun run publish.ts",
+		"test": "bun test src/"
+	},
 	"devDependencies": {
 		"@stylistic/eslint-plugin": "^5.10.0",
 		"@types/bun": "latest",
@@ -32,13 +40,5 @@
 	},
 	"peerDependencies": {
 		"typescript": "^5"
-	},
-	"scripts": {
-		"prepare": "husky",
-		"build": "tsdown",
-		"test": "bun test src/",
-		"check": "bun scripts/workspace/check",
-		"release": "bun run publish.ts",
-		"bump": "bunx bumpp"
 	}
 }
