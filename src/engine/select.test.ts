@@ -1,78 +1,46 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtemp, mkdir, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 
 import { discoverAffectedPackages } from './select'
+import {
+	commitAll,
+	createTempRepo,
+	gitHead,
+	removeTempRepo,
+	writeRepoFile,
+} from '../tests'
 
 /**
- * Scaffolds a package directory with a `package.json` and a dummy source file
- * inside a temporary git repo.
+ * Creates a temporary git repo with a simple two-package dependency chain.
  *
- * @param root - Absolute path to the temporary repo root.
- * @param relativeDirectory - Repo-relative directory for the package (e.g. `"packages/a"`).
- * @param manifest - Contents to write as `package.json`.
- */
-async function writePackage(
-	root: string,
-	relativeDirectory: string,
-	manifest: Record<string, unknown>,
-): Promise<void> {
-	const directory = join(root, relativeDirectory)
-
-	await mkdir(directory, { recursive: true })
-	await Bun.write(join(directory, 'package.json'), JSON.stringify(manifest, null, 2))
-	await Bun.write(join(directory, 'src.ts'), 'export const value = 1;\n')
-}
-
-/**
- * Returns the full SHA of HEAD in the given repo.
+ * `@acme/b` depends on `@acme/a` via `workspace:*`.
  *
- * @param root - Absolute path to the repository root.
- * @returns The HEAD commit SHA, trimmed.
- */
-async function gitHead(root: string): Promise<string> {
-	const value = await Bun.$`git -C ${root} rev-parse HEAD`.text()
-
-	return value.trim()
-}
-
-/**
- * Stages all files and creates a commit in the given repo.
- *
- * @param root - Absolute path to the repository root.
- * @param message - Commit message.
- */
-async function commitAll(root: string, message: string): Promise<void> {
-	await Bun.$`git -C ${root} add .`
-	await Bun.$`git -C ${root} -c user.name=bot -c user.email=bot@example.com commit -m ${message}`
-}
-
-/**
- * Creates a temporary git repo with two packages (`@acme/a` and `@acme/b`)
- * where `@acme/b` depends on `@acme/a` via `workspace:*`.
- *
- * @returns Absolute path to the temporary repo root. Caller must clean up.
+ * @returns Absolute path to the temporary repo root.
  */
 async function setupRepo(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), 'workspace-affected-it-'))
-
-	await Bun.$`git -C ${root} init`
-	await writePackage(root, 'packages/a', {
-		name: '@acme/a',
-		version: '1.0.0',
-	})
-	await writePackage(root, 'packages/b', {
-		name: '@acme/b',
-		version: '1.0.0',
-		dependencies: {
-			'@acme/a': 'workspace:*',
+	return createTempRepo({
+		files: {
+			'README.md': '# temp\n',
 		},
+		packages: [
+			{
+				relativeDirectory: 'packages/a',
+				manifest: {
+					name: '@acme/a',
+					version: '1.0.0',
+				},
+			},
+			{
+				relativeDirectory: 'packages/b',
+				manifest: {
+					name: '@acme/b',
+					version: '1.0.0',
+					dependencies: {
+						'@acme/a': 'workspace:*',
+					},
+				},
+			},
+		],
 	})
-	await Bun.write(join(root, 'README.md'), '# temp\n')
-	await commitAll(root, 'initial')
-
-	return root
 }
 
 describe('discoverAffectedPackages integration', () => {
@@ -82,7 +50,7 @@ describe('discoverAffectedPackages integration', () => {
 		try {
 			const before = await gitHead(root)
 
-			await Bun.write(join(root, 'packages', 'a', 'src.ts'), 'export const value = 2;\n')
+			await writeRepoFile(root, 'packages/a/src.ts', 'export const value = 2;\n')
 			await commitAll(root, 'change a')
 
 			const affected = await discoverAffectedPackages({
@@ -96,7 +64,7 @@ describe('discoverAffectedPackages integration', () => {
 
 			expect(affected.map(pkg => pkg.name)).toEqual(['@acme/a', '@acme/b'])
 		} finally {
-			await rm(root, { recursive: true, force: true })
+			await removeTempRepo(root)
 		}
 	})
 
@@ -106,7 +74,7 @@ describe('discoverAffectedPackages integration', () => {
 		try {
 			const before = await gitHead(root)
 
-			await Bun.write(join(root, 'README.md'), '# changed\n')
+			await writeRepoFile(root, 'README.md', '# changed\n')
 			await commitAll(root, 'docs')
 
 			const affected = await discoverAffectedPackages({
@@ -120,7 +88,7 @@ describe('discoverAffectedPackages integration', () => {
 
 			expect(affected).toEqual([])
 		} finally {
-			await rm(root, { recursive: true, force: true })
+			await removeTempRepo(root)
 		}
 	})
 
@@ -140,7 +108,7 @@ describe('discoverAffectedPackages integration', () => {
 
 			expect(affected).toEqual([])
 		} finally {
-			await rm(root, { recursive: true, force: true })
+			await removeTempRepo(root)
 		}
 	})
 
@@ -150,7 +118,7 @@ describe('discoverAffectedPackages integration', () => {
 		try {
 			const before = await gitHead(root)
 
-			await Bun.write(join(root, 'packages', 'a', 'src.ts'), 'export const changed = true;\n')
+			await writeRepoFile(root, 'packages/a/src.ts', 'export const changed = true;\n')
 			await commitAll(root, 'change a')
 
 			const affected = await discoverAffectedPackages({
@@ -164,7 +132,7 @@ describe('discoverAffectedPackages integration', () => {
 
 			expect(affected.map(pkg => pkg.name)).toEqual(['@acme/a'])
 		} finally {
-			await rm(root, { recursive: true, force: true })
+			await removeTempRepo(root)
 		}
 	})
 
@@ -183,7 +151,200 @@ describe('discoverAffectedPackages integration', () => {
 				}),
 			).rejects.toThrow('Commit does not exist')
 		} finally {
-			await rm(root, { recursive: true, force: true })
+			await removeTempRepo(root)
+		}
+	})
+
+	test('includes private packages when requested and expands to dependents', async () => {
+		const root = await createTempRepo({
+			packages: [
+				{
+					relativeDirectory: 'packages/core',
+					manifest: {
+						name: '@acme/core',
+						version: '1.0.0',
+						private: true,
+					},
+				},
+				{
+					relativeDirectory: 'packages/app',
+					manifest: {
+						name: '@acme/app',
+						version: '1.0.0',
+						dependencies: {
+							'@acme/core': 'workspace:*',
+						},
+					},
+				},
+			],
+		})
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'packages/core/src.ts', 'export const value = 2;\n')
+			await commitAll(root, 'change core')
+
+			const withoutPrivate = await discoverAffectedPackages({
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: false,
+				changedOnly: false,
+			})
+
+			expect(withoutPrivate).toEqual([])
+
+			const withPrivate = await discoverAffectedPackages({
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: true,
+				changedOnly: false,
+			})
+
+			expect(withPrivate.map(pkg => pkg.name)).toEqual(['@acme/core', '@acme/app'])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
+	test('respects exclude globs end to end', async () => {
+		const root = await createTempRepo({
+			packages: [
+				{
+					relativeDirectory: 'packages/public',
+					manifest: {
+						name: '@acme/public',
+						version: '1.0.0',
+					},
+				},
+				{
+					relativeDirectory: 'packages/internal/secret',
+					manifest: {
+						name: '@acme/secret',
+						version: '1.0.0',
+					},
+				},
+			],
+		})
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'packages/internal/secret/src.ts', 'export const value = 2;\n')
+			await commitAll(root, 'change secret')
+
+			const affected = await discoverAffectedPackages({
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: ['**/internal/**'],
+				includePrivate: false,
+				changedOnly: false,
+			})
+
+			expect(affected).toEqual([])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
+	test('dedupes shared dependents across multiple changed roots', async () => {
+		const root = await createTempRepo({
+			packages: [
+				{
+					relativeDirectory: 'packages/a',
+					manifest: {
+						name: '@acme/a',
+						version: '1.0.0',
+					},
+				},
+				{
+					relativeDirectory: 'packages/b',
+					manifest: {
+						name: '@acme/b',
+						version: '1.0.0',
+					},
+				},
+				{
+					relativeDirectory: 'packages/c',
+					manifest: {
+						name: '@acme/c',
+						version: '1.0.0',
+						dependencies: {
+							'@acme/a': 'workspace:*',
+							'@acme/b': 'workspace:*',
+						},
+					},
+				},
+				{
+					relativeDirectory: 'packages/d',
+					manifest: {
+						name: '@acme/d',
+						version: '1.0.0',
+						dependencies: {
+							'@acme/c': 'workspace:*',
+						},
+					},
+				},
+			],
+		})
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'packages/a/src.ts', 'export const a = 2;\n')
+			await writeRepoFile(root, 'packages/b/src.ts', 'export const b = 2;\n')
+			await commitAll(root, 'change a and b')
+
+			const affected = await discoverAffectedPackages({
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: false,
+				changedOnly: false,
+			})
+
+			expect(affected.map(pkg => pkg.name)).toEqual([
+				'@acme/a',
+				'@acme/b',
+				'@acme/c',
+				'@acme/d',
+			])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
+	test('returns empty when no workspace packages are discovered', async () => {
+		const root = await createTempRepo({
+			files: {
+				'README.md': '# temp\n',
+			},
+		})
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'README.md', '# changed\n')
+			await commitAll(root, 'docs')
+
+			const affected = await discoverAffectedPackages({
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: false,
+				changedOnly: false,
+			})
+
+			expect(affected).toEqual([])
+		} finally {
+			await removeTempRepo(root)
 		}
 	})
 })

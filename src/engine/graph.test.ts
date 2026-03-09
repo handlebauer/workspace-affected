@@ -58,4 +58,18 @@ describe('expandChangedPackageNames', () => {
 
 		expect(expandChangedPackageNames(['@acme/missing'], reverse)).toEqual([])
 	})
+
+	test('terminates cleanly when the reverse graph contains a cycle', () => {
+		const reverse = new Map<string, string[]>([
+			['@acme/a', ['@acme/b']],
+			['@acme/b', ['@acme/c']],
+			['@acme/c', ['@acme/a']],
+		])
+
+		expect(expandChangedPackageNames(['@acme/a'], reverse)).toEqual([
+			'@acme/a',
+			'@acme/b',
+			'@acme/c',
+		])
+	})
 })

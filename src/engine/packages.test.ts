@@ -86,6 +86,31 @@ describe('discoverWorkspaceDependencies', () => {
 
 		expect(dependencies.get('@acme/b')).toEqual(['@acme/a'])
 	})
+
+	test('includes peer dependencies and dedupes repeated workspace references', () => {
+		const packages: WorkspacePackage[] = [
+			{
+				...pkg('@acme/a', 'packages/a'),
+				manifest: {
+					name: '@acme/a',
+					version: '1.0.0',
+				},
+			},
+			{
+				...pkg('@acme/b', 'packages/b'),
+				manifest: {
+					name: '@acme/b',
+					version: '1.0.0',
+					dependencies: { '@acme/a': 'workspace:*' },
+					peerDependencies: { '@acme/a': 'workspace:^' },
+				},
+			},
+		]
+
+		const dependencies = discoverWorkspaceDependencies(packages)
+
+		expect(dependencies.get('@acme/b')).toEqual(['@acme/a'])
+	})
 })
 
 describe('discoverWorkspacePackages', () => {
@@ -131,6 +156,69 @@ describe('discoverWorkspacePackages', () => {
 				'@acme/internal-x',
 				'@acme/private',
 			])
+		} finally {
+			await rm(root, { recursive: true, force: true })
+		}
+	})
+
+	test('skips manifests missing required name or version fields', async () => {
+		const root = await mkdtemp(join(tmpdir(), 'workspace-affected-packages-'))
+
+		try {
+			await mkdir(join(root, 'packages', 'valid'), { recursive: true })
+			await mkdir(join(root, 'packages', 'missing-name'), { recursive: true })
+			await mkdir(join(root, 'packages', 'missing-version'), { recursive: true })
+
+			await Bun.write(
+				join(root, 'packages', 'valid', 'package.json'),
+				JSON.stringify({ name: '@acme/valid', version: '1.0.0' }),
+			)
+			await Bun.write(
+				join(root, 'packages', 'missing-name', 'package.json'),
+				JSON.stringify({ version: '1.0.0' }),
+			)
+			await Bun.write(
+				join(root, 'packages', 'missing-version', 'package.json'),
+				JSON.stringify({ name: '@acme/missing-version' }),
+			)
+
+			const packages = await discoverWorkspacePackages({
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				includePrivate: true,
+				excludePathGlobs: [],
+			})
+
+			expect(packages.map(item => item.name)).toEqual(['@acme/valid'])
+		} finally {
+			await rm(root, { recursive: true, force: true })
+		}
+	})
+
+	test('ignores matched manifests under node_modules', async () => {
+		const root = await mkdtemp(join(tmpdir(), 'workspace-affected-packages-'))
+
+		try {
+			await mkdir(join(root, 'packages', 'app'), { recursive: true })
+			await mkdir(join(root, 'packages', 'app', 'node_modules', 'dep'), { recursive: true })
+
+			await Bun.write(
+				join(root, 'packages', 'app', 'package.json'),
+				JSON.stringify({ name: '@acme/app', version: '1.0.0' }),
+			)
+			await Bun.write(
+				join(root, 'packages', 'app', 'node_modules', 'dep', 'package.json'),
+				JSON.stringify({ name: '@acme/dep', version: '1.0.0' }),
+			)
+
+			const packages = await discoverWorkspacePackages({
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				includePrivate: true,
+				excludePathGlobs: [],
+			})
+
+			expect(packages.map(item => item.name)).toEqual(['@acme/app'])
 		} finally {
 			await rm(root, { recursive: true, force: true })
 		}
