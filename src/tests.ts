@@ -54,10 +54,7 @@ export async function writeRepoFile(
  * @param fixture - Package fixture definition.
  * @returns Resolves when the package files have been written.
  */
-export async function writeWorkspacePackage(
-	root: string,
-	fixture: TestPackageFixture,
-): Promise<void> {
+async function writeWorkspacePackage(root: string, fixture: TestPackageFixture): Promise<void> {
 	const directory = join(root, fixture.relativeDirectory)
 
 	await mkdir(directory, { recursive: true })
@@ -74,7 +71,9 @@ export async function writeWorkspacePackage(
  */
 export async function commitAll(root: string, message: string): Promise<void> {
 	await Bun.$`git -C ${root} add .`.env(CLEAN_GIT_ENV)
-	await Bun.$`git -C ${root} -c user.name=bot -c user.email=bot@example.com commit -m ${message}`.env(CLEAN_GIT_ENV)
+	await Bun.$`git -C ${root} -c user.name=bot -c user.email=bot@example.com commit -m ${message}`.env(
+		CLEAN_GIT_ENV,
+	)
 }
 
 /**
@@ -133,7 +132,7 @@ export async function removeTempRepo(root: string): Promise<void> {
  * @returns Captured exit code, stdout, and stderr.
  */
 export async function runCli(cwd: string, args: string[]): Promise<CliResult> {
-	const cliPath = new URL('./cli.ts', import.meta.url)
+	const cliPath = new URL('cli.ts', import.meta.url)
 	const proc = Bun.spawn([process.execPath, cliPath.pathname, ...args], {
 		cwd,
 		stderr: 'pipe',
