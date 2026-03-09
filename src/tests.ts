@@ -21,6 +21,13 @@ type CliResult = Readonly<{
 
 const DEFAULT_SOURCE_TEXT = 'export const value = 1\n'
 
+const CLEAN_GIT_ENV = {
+	GIT_AUTHOR_DATE: undefined,
+	GIT_DIR: undefined,
+	GIT_INDEX_FILE: undefined,
+	GIT_WORK_TREE: undefined,
+}
+
 /**
  * Writes a text file relative to a repository root, creating parent directories.
  *
@@ -66,8 +73,8 @@ export async function writeWorkspacePackage(
  * @returns Resolves when the commit has been created.
  */
 export async function commitAll(root: string, message: string): Promise<void> {
-	await Bun.$`git -C ${root} add .`
-	await Bun.$`git -C ${root} -c user.name=bot -c user.email=bot@example.com commit -m ${message}`
+	await Bun.$`git -C ${root} add .`.env(CLEAN_GIT_ENV)
+	await Bun.$`git -C ${root} -c user.name=bot -c user.email=bot@example.com commit -m ${message}`.env(CLEAN_GIT_ENV)
 }
 
 /**
@@ -77,7 +84,7 @@ export async function commitAll(root: string, message: string): Promise<void> {
  * @returns The trimmed HEAD commit SHA.
  */
 export async function gitHead(root: string): Promise<string> {
-	const value = await Bun.$`git -C ${root} rev-parse HEAD`.text()
+	const value = await Bun.$`git -C ${root} rev-parse HEAD`.env(CLEAN_GIT_ENV).text()
 
 	return value.trim()
 }
@@ -93,7 +100,7 @@ export async function gitHead(root: string): Promise<string> {
 export async function createTempRepo(options: CreateTempRepoOptions = {}): Promise<string> {
 	const root = await mkdtemp(join(tmpdir(), 'workspace-affected-test-'))
 
-	await Bun.$`git -C ${root} init`
+	await Bun.$`git -C ${root} init`.env(CLEAN_GIT_ENV)
 
 	for (const fixture of options.packages ?? []) {
 		await writeWorkspacePackage(root, fixture)
