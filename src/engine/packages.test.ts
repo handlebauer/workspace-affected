@@ -161,7 +161,7 @@ describe('discoverWorkspacePackages', () => {
 		}
 	})
 
-	test('skips manifests missing required name or version fields', async () => {
+	test('skips manifests missing a name but includes those missing a version', async () => {
 		const root = await mkdtemp(join(tmpdir(), 'workspace-affected-packages-'))
 
 		try {
@@ -189,7 +189,10 @@ describe('discoverWorkspacePackages', () => {
 				excludePathGlobs: [],
 			})
 
-			expect(packages.map(item => item.name)).toEqual(['@acme/valid'])
+			expect(packages.map(item => item.name)).toEqual([
+				'@acme/missing-version',
+				'@acme/valid',
+			])
 		} finally {
 			await rm(root, { recursive: true, force: true })
 		}

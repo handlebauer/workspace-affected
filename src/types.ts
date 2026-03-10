@@ -10,7 +10,7 @@ export interface PackageJson {
 
 export interface WorkspacePackage {
 	name: string
-	version: string
+	version: string | undefined
 	private: boolean
 	manifestPath: string
 	relativeManifestPath: string

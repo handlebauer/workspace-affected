@@ -45,7 +45,7 @@ function asWorkspacePackage(
 	manifestPath: string,
 	manifest: PackageJson,
 ): WorkspacePackage | null {
-	if (!manifest.name || !manifest.version) {
+	if (!manifest.name) {
 		return null
 	}
 
