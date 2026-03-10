@@ -1,8 +1,8 @@
 # workspace-affected
 
-Detect which workspace packages are affected by a set of changes in a Bun monorepo.
+Detect which workspace packages are affected by a set of changes in a Bun monorepo. **Requires [Bun](https://bun.sh).**
 
-Given a git commit range, outputs the publishable packages that changed plus any publishable packages that transitively depend on them. Uses `package.json` dependency graphs and `git diff`. No task runner required.
+Given a git commit range, outputs the publishable packages that changed plus any publishable packages that transitively depend on them. Uses `package.json` dependency graphs and `git diff` — no task runner required.
 
 ## Install
 
