@@ -67,8 +67,8 @@ await runStep(
 	`Publishing v${version}`,
 	() => {
 		const cmd = dryRun
-			? $`bun publish --access public --tag latest --dry-run`
-			: $`bun publish --access public --tag latest`
+			? $`npm publish --access public --tag latest --provenance --dry-run`
+			: $`npm publish --access public --tag latest --provenance`
 
 		return cmd.quiet()
 	},

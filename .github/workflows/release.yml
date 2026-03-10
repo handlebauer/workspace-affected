@@ -5,7 +5,7 @@
 # On push to main, builds and publishes to npm if the version hasn't been
 # published yet (idempotent).
 #
-# Requires NPM_TOKEN secret with publish permissions.
+# Uses GitHub OIDC trusted publishing (no NPM_TOKEN needed).
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,7 @@ concurrency:
     cancel-in-progress: false
 
 permissions:
+    id-token: write
     contents: read
 
 jobs:
@@ -43,10 +44,11 @@ jobs:
                     exit 1
                   fi
 
+            - name: Upgrade npm
+              run: npm install -g npm@latest
+
             - name: Check
               run: bun run check
 
             - name: Publish
               run: bun run release
-              env:
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
