@@ -44,9 +44,6 @@ jobs:
                     exit 1
                   fi
 
-            - name: Upgrade npm
-              run: npm install -g npm@latest
-
             - name: Check
               run: bun run check
 
