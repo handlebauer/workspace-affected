@@ -20,16 +20,17 @@ bunx workspace-affected --since <sha> [options]
 
 ### Flags
 
-| Flag                | Default                    | Description                  |
-| ------------------- | -------------------------- | ---------------------------- |
-| `--since <sha>`     | **(required)**             | Base commit SHA              |
-| `--cwd <path>`      | `.`                        | Repository root              |
-| `--packages <glob>` | `packages/**/package.json` | Workspace manifest glob      |
-| `--exclude <glob>`  |                            | Exclude paths (repeatable)   |
-| `--include-private` | `false`                    | Include private packages     |
-| `--output <mode>`   | `names`                    | `names` \| `paths` \| `json` |
-| `--changed-only`    | `false`                    | Skip dependent expansion     |
-| `-h`, `--help`      |                            | Print usage                  |
+| Flag                | Default                    | Description                           |
+| ------------------- | -------------------------- | ------------------------------------- |
+| `--since <sha>`     | **(required)**             | Base commit SHA                       |
+| `--cwd <path>`      | `.`                        | Repository root                       |
+| `--packages <glob>` | `packages/**/package.json` | Workspace manifest glob               |
+| `--exclude <glob>`  |                            | Exclude paths (repeatable)            |
+| `--include-private` | `false`                    | Include private packages              |
+| `--output <mode>`   | `names`                    | `names` \| `paths` \| `json`          |
+| `--changed-only`    | `false`                    | Skip dependent expansion              |
+| `--working-tree`    | `false`                    | Count uncommitted and untracked files |
+| `-h`, `--help`      |                            | Print usage                           |
 
 ### Examples
 
@@ -58,7 +59,7 @@ fi
 ## How it works
 
 1. **Discover** workspace packages matching the glob, filtering by publishability
-2. **Diff** changed files via `git diff --name-only <sha> HEAD`
+2. **Diff** changed files via `git diff --no-renames --name-only <sha> HEAD` (with `--working-tree`, against the working tree plus untracked files); a moved file counts at both its old and new path
 3. **Map** changed files to the most specific containing package
 4. **Expand** through the reverse dependency graph (BFS) to include all transitively dependent packages
 
@@ -76,6 +77,7 @@ const affected = await discoverAffectedPackages({
 	excludePathGlobs: [],
 	includePrivate: false,
 	changedOnly: false,
+	includeWorkingTree: false,
 })
 
 for (const pkg of affected) {

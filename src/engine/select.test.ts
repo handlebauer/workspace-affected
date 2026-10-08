@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { rename } from 'node:fs/promises'
+import { join } from 'node:path'
 
 import { commitAll, createTempRepo, gitHead, removeTempRepo, writeRepoFile } from '../tests'
 import { discoverAffectedPackages } from './select'
@@ -38,6 +40,63 @@ async function setupRepo(): Promise<string> {
 }
 
 describe('discoverAffectedPackages integration', () => {
+	test('counts an uncommitted edit only with includeWorkingTree', async () => {
+		const root = await setupRepo()
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'packages/a/src.ts', 'export const value = 2;\n')
+
+			const options = {
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: false,
+				changedOnly: false,
+			}
+			const committedOnly = await discoverAffectedPackages({
+				...options,
+				includeWorkingTree: false,
+			})
+			const withWorkingTree = await discoverAffectedPackages({
+				...options,
+				includeWorkingTree: true,
+			})
+
+			expect(committedOnly).toEqual([])
+			expect(withWorkingTree.map(pkg => pkg.name)).toEqual(['@acme/a', '@acme/b'])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
+	test('marks the package a file moved out of, not only the one it moved into', async () => {
+		const root = await setupRepo()
+
+		try {
+			const before = await gitHead(root)
+
+			await rename(join(root, 'packages/a/src.ts'), join(root, 'packages/b/moved.ts'))
+			await commitAll(root, 'move a file from a to b')
+
+			const affected = await discoverAffectedPackages({
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: false,
+				changedOnly: true,
+				includeWorkingTree: false,
+			})
+
+			expect(affected.map(pkg => pkg.name)).toEqual(['@acme/a', '@acme/b'])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
 	test('returns changed package plus dependent package', async () => {
 		const root = await setupRepo()
 
@@ -54,6 +113,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(affected.map(pkg => pkg.name)).toEqual(['@acme/a', '@acme/b'])
@@ -78,6 +138,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(affected).toEqual([])
@@ -98,6 +159,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(affected).toEqual([])
@@ -122,6 +184,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: true,
+				includeWorkingTree: false,
 			})
 
 			expect(affected.map(pkg => pkg.name)).toEqual(['@acme/a'])
@@ -142,6 +205,7 @@ describe('discoverAffectedPackages integration', () => {
 					excludePathGlobs: [],
 					includePrivate: false,
 					changedOnly: false,
+					includeWorkingTree: false,
 				}),
 			).rejects.toThrow('Commit does not exist')
 		} finally {
@@ -186,6 +250,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(withoutPrivate).toEqual([])
@@ -197,6 +262,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: true,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(withPrivate.map(pkg => pkg.name)).toEqual(['@acme/core', '@acme/app'])
@@ -242,6 +308,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: ['**/internal/**'],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(affected).toEqual([])
@@ -305,6 +372,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(affected.map(pkg => pkg.name)).toEqual([
@@ -338,6 +406,7 @@ describe('discoverAffectedPackages integration', () => {
 				excludePathGlobs: [],
 				includePrivate: false,
 				changedOnly: false,
+				includeWorkingTree: false,
 			})
 
 			expect(affected).toEqual([])

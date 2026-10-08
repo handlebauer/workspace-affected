@@ -35,17 +35,44 @@ export async function assertCommitExists(cwd: string, sha: string): Promise<void
 }
 
 /**
- * Returns repo-relative file paths changed between a base commit and HEAD.
+ * Returns repo-relative file paths changed since a base commit.
  *
- * Runs `git diff --name-only <sha> HEAD` and normalizes the output paths
- * to use forward slashes.
+ * Runs `git diff --no-renames --name-only <sha> HEAD`, so a renamed file
+ * reports both its old and its new path: a file moved out of a package still
+ * marks that package as changed. With `includeWorkingTree`, the diff runs
+ * against the working tree instead of HEAD (`git diff --no-renames
+ * --name-only <sha>`), and untracked files that aren't ignored are added, so
+ * uncommitted edits count too. Paths are normalized to forward slashes,
+ * deduplicated and sorted.
  *
  * @param cwd - Absolute path to the repository root.
- * @param sha - Base commit SHA to diff against HEAD.
+ * @param sha - Base commit SHA to diff against.
+ * @param includeWorkingTree - Also count uncommitted and untracked files.
  * @returns Array of repo-relative changed file paths.
  */
-export async function getChangedFilesSince(cwd: string, sha: string): Promise<string[]> {
-	const output = await Bun.$`git -C ${cwd} diff --name-only ${sha} HEAD`.text()
+export async function getChangedFilesSince(
+	cwd: string,
+	sha: string,
+	includeWorkingTree: boolean,
+): Promise<string[]> {
+	if (!includeWorkingTree) {
+		const output = await Bun.$`git -C ${cwd} diff --no-renames --name-only ${sha} HEAD`.text()
 
-	return parseLines(output).map(file => normalizePath(file))
+		return normalizeAll(parseLines(output))
+	}
+
+	const diff = await Bun.$`git -C ${cwd} diff --no-renames --name-only ${sha}`.text()
+	const untracked = await Bun.$`git -C ${cwd} ls-files --others --exclude-standard`.text()
+
+	return normalizeAll([...parseLines(diff), ...parseLines(untracked)])
+}
+
+/**
+ * Normalizes, deduplicates and sorts repo-relative paths (byte order, as git lists them).
+ *
+ * @param files - Raw paths from git output.
+ * @returns Unique forward-slash paths in sorted order.
+ */
+function normalizeAll(files: string[]): string[] {
+	return [...new Set(files.map(file => normalizePath(file)))].sort()
 }

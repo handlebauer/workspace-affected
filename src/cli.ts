@@ -18,6 +18,7 @@ interface CliOptions {
 	includePrivate: boolean
 	output: OutputMode
 	changedOnly: boolean
+	workingTree: boolean
 	help: boolean
 }
 
@@ -46,6 +47,7 @@ ${green('Options:')}
   ${cyan('--include-private')}          Include private packages
   ${cyan('--output')} ${dim('<mode>')}           ${cyan('names')} | ${cyan('paths')} | ${cyan('json')} ${dim('(default: names)')}
   ${cyan('--changed-only')}             Skip dependent expansion, only direct changes
+  ${cyan('--working-tree')}             Also count uncommitted and untracked files
   ${cyan('-h')}, ${cyan('--help')}               Show this message
 
 ${green('Examples:')}
@@ -53,6 +55,7 @@ ${green('Examples:')}
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} abc1234 ${cyan('--output')} json
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} abc1234 ${cyan('--exclude')} ${dim("'**/internal/**'")}
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} "$BEFORE_SHA" ${cyan('--changed-only')}
+  ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} "$(git merge-base HEAD origin/main)" ${cyan('--working-tree')}
 `,
 	)
 }
@@ -78,6 +81,7 @@ function parseArgs(argv: string[]): CliOptions {
 			'include-private': { type: 'boolean', default: false },
 			output: { type: 'string', default: 'names' },
 			'changed-only': { type: 'boolean', default: false },
+			'working-tree': { type: 'boolean', default: false },
 			help: { type: 'boolean', short: 'h', default: false },
 		},
 	})
@@ -96,6 +100,7 @@ function parseArgs(argv: string[]): CliOptions {
 		includePrivate: parsed.values['include-private'] ?? false,
 		output: output as OutputMode,
 		changedOnly: parsed.values['changed-only'] ?? false,
+		workingTree: parsed.values['working-tree'] ?? false,
 		help: parsed.values.help ?? false,
 	}
 }
@@ -154,6 +159,7 @@ async function main(): Promise<void> {
 		excludePathGlobs: options.exclude,
 		includePrivate: options.includePrivate,
 		changedOnly: options.changedOnly,
+		includeWorkingTree: options.workingTree,
 	})
 
 	const out = formatOutput(affected, options.output)

@@ -98,6 +98,25 @@ describe('workspace-affected CLI', () => {
 		}
 	})
 
+	test('counts uncommitted edits with --working-tree', async () => {
+		const root = await setupCliRepo()
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'packages/a/src.ts', 'export const value = 2;\n')
+
+			const without = await runCli(root, ['--since', before])
+			const withFlag = await runCli(root, ['--since', before, '--working-tree'])
+
+			expect(without.stdout.trim()).toBe('')
+			expect(withFlag.exitCode).toBe(0)
+			expect(withFlag.stdout.trim()).toBe('@acme/a\n@acme/b')
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
 	test('prints repo-relative paths with --output paths', async () => {
 		const root = await setupCliRepo()
 

@@ -33,4 +33,5 @@ export interface DiscoverAffectedPackagesOptions {
 	excludePathGlobs: string[]
 	includePrivate: boolean
 	changedOnly: boolean
+	includeWorkingTree: boolean
 }
