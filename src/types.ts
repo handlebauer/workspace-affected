@@ -34,4 +34,5 @@ export interface DiscoverAffectedPackagesOptions {
 	includePrivate: boolean
 	changedOnly: boolean
 	includeWorkingTree: boolean
+	ignoreFileGlobs?: string[]
 }

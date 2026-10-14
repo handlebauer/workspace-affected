@@ -15,7 +15,7 @@ import type { DiscoverAffectedPackagesOptions, WorkspacePackage } from '../types
  * Orchestrates the full pipeline:
  * 1. Discover workspace packages matching the glob and filtering rules.
  * 2. Get changed files from git between `options.since` and HEAD (or the
- *    working tree, with `includeWorkingTree`).
+ *    working tree, with `includeWorkingTree`), minus `ignoreFileGlobs`.
  * 3. Map changed files to the packages they belong to.
  * 4. (Unless `changedOnly`) Expand through reverse dependency graph to include
  *    all transitively dependent publishable packages.
@@ -43,6 +43,7 @@ export async function discoverAffectedPackages(
 		options.cwd,
 		options.since,
 		options.includeWorkingTree,
+		options.ignoreFileGlobs,
 	)
 	const changedPackageNames = mapChangedFilesToPackageNames(changedFiles, packages)
 

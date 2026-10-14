@@ -43,28 +43,35 @@ export async function assertCommitExists(cwd: string, sha: string): Promise<void
  * against the working tree instead of HEAD (`git diff --no-renames
  * --name-only <sha>`), and untracked files that aren't ignored are added, so
  * uncommitted edits count too. Paths are normalized to forward slashes,
- * deduplicated and sorted.
+ * deduplicated and sorted, and paths matching `ignoreFileGlobs` are dropped
+ * (a test file, say, that changes nothing a package ships).
  *
  * @param cwd - Absolute path to the repository root.
  * @param sha - Base commit SHA to diff against.
  * @param includeWorkingTree - Also count uncommitted and untracked files.
+ * @param ignoreFileGlobs - Repo-relative path globs whose changes don't count (none by default).
  * @returns Array of repo-relative changed file paths.
  */
 export async function getChangedFilesSince(
 	cwd: string,
 	sha: string,
 	includeWorkingTree: boolean,
+	ignoreFileGlobs: string[] = [],
 ): Promise<string[]> {
-	if (!includeWorkingTree) {
-		const output = await Bun.$`git -C ${cwd} diff --no-renames --name-only ${sha} HEAD`.text()
+	const target = includeWorkingTree ? [] : ['HEAD']
+	const files = parseLines(
+		await Bun.$`git -C ${cwd} diff --no-renames --name-only ${sha} ${target}`.text(),
+	)
 
-		return normalizeAll(parseLines(output))
+	if (includeWorkingTree) {
+		files.push(
+			...parseLines(await Bun.$`git -C ${cwd} ls-files --others --exclude-standard`.text()),
+		)
 	}
 
-	const diff = await Bun.$`git -C ${cwd} diff --no-renames --name-only ${sha}`.text()
-	const untracked = await Bun.$`git -C ${cwd} ls-files --others --exclude-standard`.text()
+	const ignoreMatchers = ignoreFileGlobs.map(pattern => new Bun.Glob(pattern))
 
-	return normalizeAll([...parseLines(diff), ...parseLines(untracked)])
+	return normalizeAll(files).filter(file => !ignoreMatchers.some(matcher => matcher.match(file)))
 }
 
 /**

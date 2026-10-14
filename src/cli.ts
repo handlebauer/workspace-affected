@@ -15,6 +15,7 @@ interface CliOptions {
 	cwd: string
 	packages: string
 	exclude: string[]
+	ignoreFile: string[]
 	includePrivate: boolean
 	output: OutputMode
 	changedOnly: boolean
@@ -44,6 +45,7 @@ ${green('Options:')}
   ${cyan('--cwd')} ${dim('<path>')}              Repository root ${dim('(default: cwd)')}
   ${cyan('--packages')} ${dim('<glob>')}         Workspace manifest glob ${dim(`(default: ${DEFAULT_PACKAGES_GLOB})`)}
   ${cyan('--exclude')} ${dim('<glob>')}          Exclude manifest paths matching glob ${dim('(repeatable)')}
+  ${cyan('--ignore-file')} ${dim('<glob>')}      Don't count changed files matching glob ${dim('(repeatable)')}
   ${cyan('--include-private')}          Include private packages
   ${cyan('--output')} ${dim('<mode>')}           ${cyan('names')} | ${cyan('paths')} | ${cyan('json')} ${dim('(default: names)')}
   ${cyan('--changed-only')}             Skip dependent expansion, only direct changes
@@ -54,6 +56,7 @@ ${green('Examples:')}
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} abc1234
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} abc1234 ${cyan('--output')} json
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} abc1234 ${cyan('--exclude')} ${dim("'**/internal/**'")}
+  ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} abc1234 ${cyan('--ignore-file')} ${dim("'**/*.test.ts'")}
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} "$BEFORE_SHA" ${cyan('--changed-only')}
   ${dim('$')} ${bold('workspace-affected')} ${cyan('--since')} "$(git merge-base HEAD origin/main)" ${cyan('--working-tree')}
 `,
@@ -78,6 +81,7 @@ function parseArgs(argv: string[]): CliOptions {
 			cwd: { type: 'string', default: process.cwd() },
 			packages: { type: 'string', default: DEFAULT_PACKAGES_GLOB },
 			exclude: { type: 'string', multiple: true, default: [] },
+			'ignore-file': { type: 'string', multiple: true, default: [] },
 			'include-private': { type: 'boolean', default: false },
 			output: { type: 'string', default: 'names' },
 			'changed-only': { type: 'boolean', default: false },
@@ -97,6 +101,7 @@ function parseArgs(argv: string[]): CliOptions {
 		cwd: parsed.values.cwd ?? process.cwd(),
 		packages: parsed.values.packages ?? DEFAULT_PACKAGES_GLOB,
 		exclude: parsed.values.exclude ?? [],
+		ignoreFile: parsed.values['ignore-file'] ?? [],
 		includePrivate: parsed.values['include-private'] ?? false,
 		output: output as OutputMode,
 		changedOnly: parsed.values['changed-only'] ?? false,
@@ -160,6 +165,7 @@ async function main(): Promise<void> {
 		includePrivate: options.includePrivate,
 		changedOnly: options.changedOnly,
 		includeWorkingTree: options.workingTree,
+		ignoreFileGlobs: options.ignoreFile,
 	})
 
 	const out = formatOutput(affected, options.output)

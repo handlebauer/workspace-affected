@@ -20,17 +20,18 @@ bunx workspace-affected --since <sha> [options]
 
 ### Flags
 
-| Flag                | Default                    | Description                           |
-| ------------------- | -------------------------- | ------------------------------------- |
-| `--since <sha>`     | **(required)**             | Base commit SHA                       |
-| `--cwd <path>`      | `.`                        | Repository root                       |
-| `--packages <glob>` | `packages/**/package.json` | Workspace manifest glob               |
-| `--exclude <glob>`  |                            | Exclude paths (repeatable)            |
-| `--include-private` | `false`                    | Include private packages              |
-| `--output <mode>`   | `names`                    | `names` \| `paths` \| `json`          |
-| `--changed-only`    | `false`                    | Skip dependent expansion              |
-| `--working-tree`    | `false`                    | Count uncommitted and untracked files |
-| `-h`, `--help`      |                            | Print usage                           |
+| Flag                   | Default                    | Description                                               |
+| ---------------------- | -------------------------- | --------------------------------------------------------- |
+| `--since <sha>`        | **(required)**             | Base commit SHA                                           |
+| `--cwd <path>`         | `.`                        | Repository root                                           |
+| `--packages <glob>`    | `packages/**/package.json` | Workspace manifest glob                                   |
+| `--exclude <glob>`     |                            | Exclude packages whose manifest path matches (repeatable) |
+| `--ignore-file <glob>` |                            | Don't count changed files matching (repeatable)           |
+| `--include-private`    | `false`                    | Include private packages                                  |
+| `--output <mode>`      | `names`                    | `names` \| `paths` \| `json`                              |
+| `--changed-only`       | `false`                    | Skip dependent expansion                                  |
+| `--working-tree`       | `false`                    | Count uncommitted and untracked files                     |
+| `-h`, `--help`         |                            | Print usage                                               |
 
 ### Examples
 
@@ -43,6 +44,9 @@ bunx workspace-affected --since abc1234 --output json
 
 # Exclude internal packages
 bunx workspace-affected --since abc1234 --exclude '**/internal/**'
+
+# Don't count test-only changes
+bunx workspace-affected --since abc1234 --ignore-file '**/*.test.ts'
 
 # Only directly changed, skip dependents
 bunx workspace-affected --since abc1234 --changed-only
@@ -59,7 +63,7 @@ fi
 ## How it works
 
 1. **Discover** workspace packages matching the glob, filtering by publishability
-2. **Diff** changed files via `git diff --no-renames --name-only <sha> HEAD` (with `--working-tree`, against the working tree plus untracked files); a moved file counts at both its old and new path
+2. **Diff** changed files via `git diff --no-renames --name-only <sha> HEAD` (with `--working-tree`, against the working tree plus untracked files); a moved file counts at both its old and new path, and files matching `--ignore-file` don't count
 3. **Map** changed files to the most specific containing package
 4. **Expand** through the reverse dependency graph (BFS) to include all transitively dependent packages
 

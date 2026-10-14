@@ -44,6 +44,25 @@ describe('getChangedFilesSince', () => {
 			await removeTempRepo(root)
 		}
 	})
+
+	test('drops paths matching ignoreFileGlobs, at any depth', async () => {
+		const root = await createTempRepo({ files: { 'README.md': '# temp\n' }, packages: [] })
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'root.test.ts', 'export {};\n')
+			await writeRepoFile(root, 'packages/a/deep/src.test.ts', 'export {};\n')
+			await writeRepoFile(root, 'packages/a/src.ts', 'export const value = 2;\n')
+			await commitAll(root, 'add tests and a source file')
+
+			expect(await getChangedFilesSince(root, before, false, ['**/*.test.ts'])).toEqual([
+				'packages/a/src.ts',
+			])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
 })
 
 /** A repo with two packages, so a move between them shows both sides. */

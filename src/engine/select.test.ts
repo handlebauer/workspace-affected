@@ -97,6 +97,37 @@ describe('discoverAffectedPackages integration', () => {
 		}
 	})
 
+	test('leaves out a package whose only changes match ignoreFileGlobs', async () => {
+		const root = await setupRepo()
+
+		try {
+			const before = await gitHead(root)
+
+			await writeRepoFile(root, 'packages/a/src.test.ts', 'export {};\n')
+			await commitAll(root, 'add a test to a')
+
+			const options = {
+				since: before,
+				cwd: root,
+				packagesGlob: 'packages/**/package.json',
+				excludePathGlobs: [],
+				includePrivate: false,
+				changedOnly: false,
+				includeWorkingTree: false,
+			}
+			const counted = await discoverAffectedPackages(options)
+			const ignored = await discoverAffectedPackages({
+				...options,
+				ignoreFileGlobs: ['**/*.test.ts'],
+			})
+
+			expect(counted.map(pkg => pkg.name)).toContain('@acme/a')
+			expect(ignored).toEqual([])
+		} finally {
+			await removeTempRepo(root)
+		}
+	})
+
 	test('returns changed package plus dependent package', async () => {
 		const root = await setupRepo()
 
